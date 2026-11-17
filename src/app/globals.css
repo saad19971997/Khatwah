@@ -1,0 +1,70 @@
+@import "tailwindcss";
+
+/* Design tokens extracted from the Khatwah prototype. */
+@theme {
+  --font-sans: "IBM Plex Sans Arabic", system-ui, sans-serif;
+
+  --color-primary: #0f5f5c;
+  --color-primary-hover: #0b4a47;
+  --color-primary-busy: #4f7f7c;
+  --color-tint: #e3f1ef;
+  --color-selected: #eef7f5;
+  --color-info: #f0f6f5;
+
+  --color-page: #f6f8f7;
+  --color-surface: #ffffff;
+  --color-line: #dce5e3;
+  --color-line-soft: #e7eeec;
+  --color-line-input: #c5d2cf;
+  --color-line-dashed: #9fb3af;
+  --color-chip: #f0f4f3;
+
+  --color-ink: #172726;
+  --color-ink-strong: #102221;
+  --color-ink-body: #3f524f;
+  --color-ink-chip: #2c3d3b;
+  --color-muted: #4f615e;
+
+  --color-error: #b42318;
+  --color-error-bg: #fef3f2;
+  --color-error-line: #f5c2bd;
+  --color-error-ink: #8f1d14;
+
+  --color-success-bg: #e2f4e8;
+  --color-success-ink: #17603a;
+
+  --color-warn-bg: #fffaf0;
+  --color-warn-line: #f1d9a8;
+  --color-warn-chip: #fff3dc;
+  --color-warn-ink: #7a4a00;
+
+  --radius-card: 16px;
+  --radius-control: 12px;
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    margin: 0;
+    background: var(--color-page);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: 16px;
+    line-height: 1.7;
+  }
+  a {
+    color: var(--color-primary);
+  }
+  a:hover {
+    color: var(--color-primary-hover);
+  }
+  :focus-visible {
+    outline: 3px solid color-mix(in srgb, var(--color-primary) 55%, transparent);
+    outline-offset: 2px;
+  }
+  input[type="radio"] {
+    accent-color: var(--color-primary);
+  }
+}

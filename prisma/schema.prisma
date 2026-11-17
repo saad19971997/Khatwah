@@ -1,0 +1,197 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Auth.js models ────────────────────────────────────────────────
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts Account[]
+  sessions Session[]
+  bookings Booking[]
+}
+
+model Account {
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([provider, providerAccountId])
+}
+
+model Session {
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@id([identifier, token])
+}
+
+// ─── Domain ───────────────────────────────────────────────────────
+
+model Consultant {
+  id           String  @id @default(cuid())
+  slug         String  @unique
+  name         String
+  initials     String
+  role         String
+  bio          String
+  avatarBg     String
+  avatarFg     String
+  durationMin  Int
+  /// Price in halalas (1 SAR = 100 halalas)
+  priceHalalas Int
+  email        String
+  active       Boolean @default(true)
+  sortOrder    Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  availability AvailabilityRule[]
+  exceptions   AvailabilityException[]
+  bookings     Booking[]
+}
+
+/// Weekly recurring availability window, in the platform time zone (Asia/Riyadh).
+model AvailabilityRule {
+  id           String @id @default(cuid())
+  consultantId String
+  /// 0 = Sunday … 6 = Saturday
+  weekday      Int
+  /// "HH:mm" local time
+  startTime    String
+  /// "HH:mm" local time (exclusive)
+  endTime      String
+
+  consultant Consultant @relation(fields: [consultantId], references: [id], onDelete: Cascade)
+
+  @@index([consultantId])
+}
+
+/// A whole local date on which the consultant is unavailable.
+model AvailabilityException {
+  id           String  @id @default(cuid())
+  consultantId String
+  /// "YYYY-MM-DD" local date
+  date         String
+  reason       String?
+
+  consultant Consultant @relation(fields: [consultantId], references: [id], onDelete: Cascade)
+
+  @@unique([consultantId, date])
+}
+
+enum BookingStatus {
+  PENDING_PAYMENT
+  CONFIRMED
+  EXPIRED
+  CANCELLED
+}
+
+model Booking {
+  id           String        @id @default(cuid())
+  /// Human-facing reference, e.g. KH-482615
+  ref          String        @unique
+  userId       String
+  consultantId String
+  startsAt     DateTime
+  endsAt       DateTime
+  topic        String?
+  status       BookingStatus @default(PENDING_PAYMENT)
+  /// While PENDING_PAYMENT the slot is held until this instant.
+  holdExpiresAt DateTime?
+  confirmedAt  DateTime?
+  meetUrl      String?
+  calendarEventId String?
+  /// Set once the confirmation emails have gone out (prevents duplicates).
+  notifiedAt   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user       User       @relation(fields: [userId], references: [id])
+  consultant Consultant @relation(fields: [consultantId], references: [id])
+  payments   Payment[]
+
+  // A partial unique index on (consultantId, startsAt) WHERE status IN
+  // ('PENDING_PAYMENT','CONFIRMED') is created in a raw-SQL migration to
+  // prevent double booking. See prisma/migrations/*_booking_slot_unique.
+  @@index([consultantId, startsAt])
+  @@index([userId])
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+model Payment {
+  id            String        @id @default(cuid())
+  bookingId     String
+  provider      String
+  /// Provider's id for the payment link / invoice
+  providerRef   String?       @unique
+  checkoutUrl   String?
+  amountHalalas Int
+  currency      String        @default("SAR")
+  status        PaymentStatus @default(PENDING)
+  methodLabel   String?
+  paidAt        DateTime?
+  rawPayload    Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([bookingId])
+}
+
+/// Processed webhook deliveries, so a retried delivery is applied only once.
+model WebhookEvent {
+  id              String   @id @default(cuid())
+  provider        String
+  providerEventId String
+  type            String?
+  payload         Json?
+  receivedAt      DateTime @default(now())
+
+  @@unique([provider, providerEventId])
+}
